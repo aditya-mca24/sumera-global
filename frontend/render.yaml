@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: surema-api
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DB_HOST
+        fromDatabase:
+          name: surema-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: surema-db
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: surema-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: surema-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: surema-db
+          property: database
+      - key: JWT_SECRET
+        generateValue: true

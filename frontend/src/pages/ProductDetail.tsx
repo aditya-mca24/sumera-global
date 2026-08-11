@@ -139,6 +139,12 @@ export default function ProductDetail() {
   const sortedImages = [...images].sort((a, b) => a.display_order - b.display_order);
   const selectedVariantStock = selectedVariant?.stock ?? null;
 
+  const descriptionLines = product.description
+    ? product.description.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+    : [];
+  const descriptionSummary = descriptionLines.length > 0 ? descriptionLines[0] : '';
+  const descriptionDetails = descriptionLines.length > 1 ? descriptionLines.slice(1) : [];
+
   // Rating breakdown
   const ratingCounts = [5, 4, 3, 2, 1].map(star => reviews.filter(r => r.rating === star).length);
   const totalReviews = reviews.length;
@@ -380,13 +386,62 @@ export default function ProductDetail() {
           </div>
           <div className="py-8">
             {activeTab === 'description' && (
-              <div className="prose max-w-none text-neutral-600 dark:text-neutral-400 leading-relaxed">
-                <p>{product.description}</p>
-                <ul className="mt-4 space-y-2 list-disc list-inside text-sm">
-                  <li>Brand: {product.brand}</li>
-                  {product.sku && <li>SKU: {product.sku}</li>}
-                  <li>Category: {product.category?.name}</li>
-                </ul>
+              <div className="space-y-6 text-neutral-600 dark:text-neutral-400">
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+                  <div>
+                    <h2 className="text-2xl font-semibold text-neutral-900 dark:text-white">Product Details</h2>
+                    {descriptionSummary && <p className="mt-4 text-base leading-7 text-neutral-700 dark:text-neutral-300">{descriptionSummary}</p>}
+                    {descriptionDetails.length > 0 && (
+                      <ul className="mt-4 space-y-2 text-sm list-disc list-inside text-neutral-600 dark:text-neutral-400">
+                        {descriptionDetails.map((line, index) => (
+                          <li key={index}>{line}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <div className="rounded-3xl border border-neutral-100 dark:border-primary-900/40 bg-neutral-50 dark:bg-[#120721] p-6 shadow-sm">
+                    <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Product specifications</h3>
+                    <div className="space-y-3 text-sm text-neutral-700 dark:text-neutral-300">
+                      <div className="flex items-start gap-3">
+                        <span className="min-w-[110px] font-medium text-neutral-900 dark:text-neutral-200">Fabric</span>
+                        <span>{product.tags?.includes('Silk Blend') ? 'Silk Blend' : product.brand || 'N/A'}</span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <span className="min-w-[110px] font-medium text-neutral-900 dark:text-neutral-200">Fit</span>
+                        <span>Straight shape</span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <span className="min-w-[110px] font-medium text-neutral-900 dark:text-neutral-200">Sleeves</span>
+                        <span>Three-quarter regular sleeves</span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <span className="min-w-[110px] font-medium text-neutral-900 dark:text-neutral-200">Style</span>
+                        <span>Regular</span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <span className="min-w-[110px] font-medium text-neutral-900 dark:text-neutral-200">Closure</span>
+                        <span>Slip-On</span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <span className="min-w-[110px] font-medium text-neutral-900 dark:text-neutral-200">Detail</span>
+                        <span>Embroidered motifs</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-neutral-100 dark:border-primary-900/40 bg-white dark:bg-[#1c0f33] p-6">
+                  <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Kurta design</h3>
+                  <ul className="grid gap-3 text-sm text-neutral-600 dark:text-neutral-400 list-disc list-inside">
+                    <li>Ethnic motifs embroidered</li>
+                    <li>Straight shape</li>
+                    <li>Regular style</li>
+                    <li>Round neck, three-quarter regular sleeves</li>
+                    <li>1 pockets sequinned detail</li>
+                    <li>Calf length with straight hem</li>
+                    <li>Silk blend machine weave fabric</li>
+                  </ul>
+                </div>
               </div>
             )}
             {activeTab === 'size' && (

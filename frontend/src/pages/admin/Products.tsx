@@ -29,6 +29,14 @@ interface ProductImage {
   existing?: boolean;
 }
 
+interface ProductVariantForm {
+  id?: string;
+  size: string;
+  color: string;
+  color_hex: string;
+  stock: number;
+}
+
 const EMPTY_FORM: ProductForm = {
   name: '',
   slug: '',
@@ -60,6 +68,7 @@ export default function AdminProducts() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductForm>(EMPTY_FORM);
   const [images, setImages] = useState<ProductImage[]>([]);
+  const [variants, setVariants] = useState<ProductVariantForm[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [showLocalInput, setShowLocalInput] = useState(false);
@@ -98,6 +107,7 @@ export default function AdminProducts() {
     setEditing(null);
     setForm(EMPTY_FORM);
     setImages([]);
+    setVariants([]);
     setShowLocalInput(false);
     setLocalImagePath('');
     setError('');
@@ -121,6 +131,15 @@ export default function AdminProducts() {
       is_best_seller: product.is_best_seller,
       is_active: product.is_active,
     });
+    setVariants(
+      product.variants?.map((variant) => ({
+        id: variant.id,
+        size: variant.size,
+        color: variant.color ?? '',
+        color_hex: variant.color_hex ?? '',
+        stock: variant.stock,
+      })) ?? []
+    );
     setImages(
       product.images?.map((img) => ({
         id: img.id,
@@ -142,35 +161,38 @@ export default function AdminProducts() {
     }
     setSaving(true);
     setError('');
-    const slug = form.slug || slugify(form.name);
-    const tags = form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [];
-    const payload = {
-      name: form.name,
-      slug,
-      category_id: form.category_id || null,
-      description: form.description || null,
-      price: parseFloat(form.price),
-      compare_price: form.compare_price ? parseFloat(form.compare_price) : null,
-      brand: form.brand,
-      sku: form.sku || null,
-      tags,
-      is_featured: form.is_featured,
-      is_new_arrival: form.is_new_arrival,
-      is_best_seller: form.is_best_seller,
-      is_active: form.is_active,
-    };
-
     try {
-      if (images.some((img) => img.file)) {
-        throw new Error('File uploads are not supported in this setup. Use image URLs or local paths instead.');
-      }
-
-      const imagePayload = images.map((i, idx) => ({
-        id: i.id,
-        url: i.url,
-        is_primary: i.is_primary,
+      const slug = form.slug || slugify(form.name);
+      const tags = form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [];
+      const imagePayload = images.map((image, idx) => ({
+        id: image.id,
+        url: image.url,
+        alt_text: null,
         display_order: idx,
+        is_primary: image.is_primary,
       }));
+      const payload = {
+        name: form.name,
+        slug,
+        category_id: form.category_id || null,
+        description: form.description || null,
+        price: parseFloat(form.price),
+        compare_price: form.compare_price ? parseFloat(form.compare_price) : null,
+        brand: form.brand,
+        sku: form.sku || null,
+        tags,
+        is_featured: form.is_featured,
+        is_new_arrival: form.is_new_arrival,
+        is_best_seller: form.is_best_seller,
+        is_active: form.is_active,
+        variants: variants.map((variant) => ({
+          id: variant.id,
+          size: variant.size,
+          color: variant.color || null,
+          color_hex: variant.color_hex || null,
+          stock: Number(variant.stock) || 0,
+        })),
+      };
 
       if (editing) {
         await apiFetch<{ product: Product }>(`/products/${editing.id}`, {
@@ -188,8 +210,9 @@ export default function AdminProducts() {
       setModalOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   async function handleDelete(id: string) {
@@ -219,6 +242,8 @@ export default function AdminProducts() {
   useEffect(() => {
     setPage(1);
   }, [search, categoryFilter]);
+
+  const totalVariantStock = variants.reduce((sum, variant) => sum + (Number(variant.stock) || 0), 0);
 
   const TOGGLES: { key: keyof ProductForm; label: string }[] = [
     { key: 'is_featured', label: 'Featured' },
@@ -523,6 +548,97 @@ export default function AdminProducts() {
                     onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
                     placeholder="floral, casual, summer"
                   />
+                </div>
+
+                <div className="col-span-2">
+                  <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1.5">Variants / Stock</label>
+                      <p className="text-xs text-neutral-500">Add size/color combinations and set available stock.</p>
+                    </div>
+                    <div className="text-right text-sm text-neutral-500">
+                      <p>Total stock: <span className="font-semibold text-neutral-900 dark:text-white">{totalVariantStock}</span></p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setVariants((prev) => [
+                          ...prev,
+                          {
+                            id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+                            size: '',
+                            color: '',
+                            color_hex: '',
+                            stock: 0,
+                          },
+                        ])
+                      }
+                      className="btn-secondary text-sm px-3"
+                    >
+                      Add Variant
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {variants.map((variant, index) => (
+                      <div key={variant.id || index} className="grid grid-cols-4 gap-3 items-end">
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-700 mb-1.5">Size</label>
+                          <input
+                            className="input"
+                            value={variant.size}
+                            onChange={(e) =>
+                              setVariants((prev) => prev.map((item, i) => (i === index ? { ...item, size: e.target.value } : item)))
+                            }
+                            placeholder="S, M, L"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-700 mb-1.5">Color</label>
+                          <input
+                            className="input"
+                            value={variant.color}
+                            onChange={(e) =>
+                              setVariants((prev) => prev.map((item, i) => (i === index ? { ...item, color: e.target.value } : item)))
+                            }
+                            placeholder="Yellow"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-700 mb-1.5">Color Hex</label>
+                          <input
+                            className="input"
+                            value={variant.color_hex}
+                            onChange={(e) =>
+                              setVariants((prev) => prev.map((item, i) => (i === index ? { ...item, color_hex: e.target.value } : item)))
+                            }
+                            placeholder="#F3C623"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-700 mb-1.5">Stock</label>
+                          <div className="flex gap-2 items-center">
+                            <input
+                              type="number"
+                              min={0}
+                              className="input"
+                              value={variant.stock}
+                              onChange={(e) =>
+                                setVariants((prev) => prev.map((item, i) => (i === index ? { ...item, stock: Number(e.target.value) } : item)))
+                              }
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setVariants((prev) => prev.filter((_, i) => i !== index))}
+                              className="text-error-600 hover:text-error-700"
+                              aria-label="Remove variant"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Image Upload */}

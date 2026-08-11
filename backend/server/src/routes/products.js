@@ -191,7 +191,7 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    const { images, ...productUpdates } = updates;
+    const { images, variants, ...productUpdates } = updates;
 
     const fields = [];
     const values = [];
@@ -220,7 +220,17 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
       }
     }
 
-    if (fields.length === 0 && !Array.isArray(images)) {
+    if (Array.isArray(variants)) {
+      await query('DELETE FROM product_variants WHERE product_id = ?', [id]);
+      for (const variant of variants) {
+        await query(
+          'INSERT INTO product_variants (id, product_id, size, color, color_hex, stock) VALUES (?, ?, ?, ?, ?, ?)',
+          [variant.id || uuidv4(), id, variant.size, variant.color || null, variant.color_hex || null, variant.stock || 0]
+        );
+      }
+    }
+
+    if (fields.length === 0 && !Array.isArray(images) && !Array.isArray(variants)) {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
 

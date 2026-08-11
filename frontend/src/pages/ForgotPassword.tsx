@@ -6,20 +6,25 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [resetUrl, setResetUrl] = useState('');
   const [error, setError] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setMessage('');
+    setResetUrl('');
     setLoading(true);
 
     try {
-      await apiFetch('/auth/forgot-password', {
+      const data = await apiFetch<{ message: string; resetUrl?: string }>('/auth/forgot-password', {
         method: 'POST',
         body: { email },
       });
-      setMessage('If an account exists for this email, a reset link has been prepared.');
+      setMessage(data.message || 'If an account exists for this email, a reset link has been prepared.');
+      if (data.resetUrl) {
+        setResetUrl(data.resetUrl);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to process request');
     } finally {
@@ -52,6 +57,14 @@ export default function ForgotPassword() {
 
             {error && <p className="text-error-600 dark:text-error-400 text-sm bg-error-50 dark:bg-error-900/20 px-3 py-2 rounded-lg">{error}</p>}
             {message && <p className="text-success-600 dark:text-success-400 text-sm bg-success-50 dark:bg-success-900/20 px-3 py-2 rounded-lg">{message}</p>}
+            {resetUrl && (
+              <p className="text-sm mt-2 break-all">
+                <span className="font-medium">Reset link:</span>{' '}
+                <a href={resetUrl} className="text-primary-600 dark:text-primary-400 hover:text-primary-700" target="_blank" rel="noreferrer">
+                  {resetUrl}
+                </a>
+              </p>
+            )}
 
             <button type="submit" disabled={loading} className="btn-primary w-full justify-center py-3.5 disabled:opacity-60">
               {loading ? 'Sending...' : 'Send Reset Link'}

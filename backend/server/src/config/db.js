@@ -112,6 +112,7 @@ async function initDatabase() {
         sku VARCHAR(100) UNIQUE,
         brand VARCHAR(100) DEFAULT 'Surema',
         tags JSON,
+        specifications JSON,
         is_featured BOOLEAN DEFAULT FALSE,
         is_new_arrival BOOLEAN DEFAULT FALSE,
         is_best_seller BOOLEAN DEFAULT FALSE,
@@ -126,6 +127,14 @@ async function initDatabase() {
         INDEX idx_active (is_active)
       )
     `);
+
+    const [prodCols] = await connection.execute(
+      `SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'products'`
+    );
+    const prodColNames = prodCols.map((c) => c.COLUMN_NAME);
+    if (!prodColNames.includes('specifications')) {
+      await connection.execute('ALTER TABLE products ADD COLUMN specifications JSON');
+    }
 
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS product_images (

@@ -82,10 +82,10 @@ export default function Login() {
             <Link to="/register" className="text-primary-600 dark:text-primary-400 font-medium hover:text-primary-700">Create one</Link>
           </p>
 
-          <div className="mt-6 p-4 bg-neutral-50 dark:bg-[#2e1547] rounded-xl">
+          {/* <div className="mt-6 p-4 bg-neutral-50 dark:bg-[#2e1547] rounded-xl">
             <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-2">Demo Admin Account</p>
             <p className="text-xs text-neutral-500 dark:text-neutral-400">After registering, contact support to enable admin access.</p>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

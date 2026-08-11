@@ -5,6 +5,11 @@ import { apiFetch } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { Product, Category } from '../../types';
 
+interface ProductSpecification {
+  label: string;
+  value: string;
+}
+
 interface ProductForm {
   name: string;
   slug: string;
@@ -15,6 +20,7 @@ interface ProductForm {
   brand: string;
   sku: string;
   tags: string;
+  specifications: ProductSpecification[];
   is_featured: boolean;
   is_new_arrival: boolean;
   is_best_seller: boolean;
@@ -47,6 +53,7 @@ const EMPTY_FORM: ProductForm = {
   brand: 'Surema',
   sku: '',
   tags: '',
+  specifications: [],
   is_featured: false,
   is_new_arrival: false,
   is_best_seller: false,
@@ -71,6 +78,10 @@ export default function AdminProducts() {
   const [variants, setVariants] = useState<ProductVariantForm[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [bulkDescription, setBulkDescription] = useState('');
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkError, setBulkError] = useState('');
   const [showLocalInput, setShowLocalInput] = useState(false);
   const [localImagePath, setLocalImagePath] = useState('');
   const [page, setPage] = useState(1);
@@ -114,6 +125,12 @@ export default function AdminProducts() {
     setModalOpen(true);
   }
 
+  function openBulkEdit() {
+    setBulkDescription('');
+    setBulkError('');
+    setBulkModalOpen(true);
+  }
+
   function openEdit(product: Product) {
     setEditing(product);
     setForm({
@@ -126,6 +143,7 @@ export default function AdminProducts() {
       brand: product.brand,
       sku: product.sku ?? '',
       tags: product.tags?.join(', ') ?? '',
+      specifications: product.specifications ?? [],
       is_featured: product.is_featured,
       is_new_arrival: product.is_new_arrival,
       is_best_seller: product.is_best_seller,
@@ -181,6 +199,7 @@ export default function AdminProducts() {
         brand: form.brand,
         sku: form.sku || null,
         tags,
+        specifications: form.specifications,
         is_featured: form.is_featured,
         is_new_arrival: form.is_new_arrival,
         is_best_seller: form.is_best_seller,
@@ -226,6 +245,29 @@ export default function AdminProducts() {
     }
   }
 
+  async function handleBulkUpdate() {
+    if (!bulkDescription.trim()) {
+      setBulkError('Description cannot be empty.');
+      return;
+    }
+
+    setBulkSaving(true);
+    setBulkError('');
+
+    try {
+      await apiFetch(`/products/bulk-description`, {
+        method: 'PUT',
+        body: { description: bulkDescription.trim() },
+      });
+      await fetchProducts();
+      setBulkModalOpen(false);
+    } catch (err) {
+      setBulkError(err instanceof Error ? err.message : 'Failed to update descriptions');
+    } finally {
+      setBulkSaving(false);
+    }
+  }
+
   const filtered = products.filter((p) => {
     const matchesSearch =
       p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -257,14 +299,19 @@ export default function AdminProducts() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-serif font-bold text-neutral-900">Products</h1>
           <p className="text-neutral-500 text-sm">{products.length} total products</p>
         </div>
-        <button onClick={openAdd} className="btn-primary text-sm">
-          <Plus size={16} /> Add Product
-        </button>
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={openBulkEdit} className="btn-secondary text-sm">
+            <Plus size={16} /> Update All Descriptions
+          </button>
+          <button onClick={openAdd} className="btn-primary text-sm">
+            <Plus size={16} /> Add Product
+          </button>
+        </div>
       </div>
 
       {/* Search + Filter */}
@@ -541,6 +588,73 @@ export default function AdminProducts() {
                   />
                 </div>
                 <div className="col-span-2">
+                  <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1.5">Specifications</label>
+                      <p className="text-xs text-neutral-500">Add product attributes like fabric, fit, sleeve type, etc.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({
+                        ...f,
+                        specifications: [...f.specifications, { label: '', value: '' }],
+                      }))}
+                      className="btn-secondary text-sm px-3"
+                    >
+                      Add Spec
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {form.specifications.map((spec, index) => (
+                      <div key={index} className="grid grid-cols-[1fr_1fr_auto] gap-3 items-end">
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-700 mb-1.5">Label</label>
+                          <input
+                            className="input"
+                            value={spec.label}
+                            onChange={(e) =>
+                              setForm((f) => ({
+                                ...f,
+                                specifications: f.specifications.map((item, idx) =>
+                                  idx === index ? { ...item, label: e.target.value } : item
+                                ),
+                              }))}
+                            placeholder="Fabric"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-700 mb-1.5">Value</label>
+                          <input
+                            className="input"
+                            value={spec.value}
+                            onChange={(e) =>
+                              setForm((f) => ({
+                                ...f,
+                                specifications: f.specifications.map((item, idx) =>
+                                  idx === index ? { ...item, value: e.target.value } : item
+                                ),
+                              }))}
+                            placeholder="Silk Blend"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm((f) => ({
+                              ...f,
+                              specifications: f.specifications.filter((_, idx) => idx !== index),
+                            }))}
+                          className="text-error-600 hover:text-error-700"
+                          aria-label="Remove specification"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="col-span-2">
                   <label className="block text-sm font-medium text-neutral-700 mb-1.5">Tags (comma-separated)</label>
                   <input
                     className="input"
@@ -781,6 +895,47 @@ export default function AdminProducts() {
               </button>
               <button onClick={handleSave} disabled={saving} className="btn-primary text-sm disabled:opacity-60">
                 {saving ? 'Saving...' : editing ? 'Save Changes' : 'Add Product'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bulkModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center py-6 px-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-xl shadow-2xl animate-slide-up my-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
+              <h2 className="font-semibold text-neutral-900 text-lg">Update All Product Descriptions</h2>
+              <button onClick={() => setBulkModalOpen(false)} className="text-neutral-400 hover:text-neutral-700">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1.5">New Description</label>
+                <textarea
+                  rows={6}
+                  className="input resize-none w-full"
+                  value={bulkDescription}
+                  onChange={(e) => setBulkDescription(e.target.value)}
+                  placeholder="Enter the new description for all products"
+                />
+              </div>
+              <p className="text-sm text-neutral-500">
+                This will replace the description text on all products in the catalog.
+              </p>
+              {bulkError && <p className="text-error-600 text-sm bg-error-50 px-3 py-2 rounded-lg">{bulkError}</p>}
+            </div>
+            <div className="px-6 py-4 border-t border-neutral-100 flex justify-end gap-3">
+              <button onClick={() => setBulkModalOpen(false)} className="btn-secondary text-sm">
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkUpdate}
+                disabled={bulkSaving}
+                className="btn-primary text-sm disabled:opacity-60"
+              >
+                {bulkSaving ? 'Updating...' : 'Update All'}
               </button>
             </div>
           </div>

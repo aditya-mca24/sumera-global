@@ -77,6 +77,9 @@ router.get('/', optionalAuth, async (req, res) => {
       if (typeof product.tags === 'string') {
         try { product.tags = JSON.parse(product.tags); } catch { product.tags = []; }
       }
+      if (typeof product.specifications === 'string') {
+        try { product.specifications = JSON.parse(product.specifications); } catch { product.specifications = []; }
+      }
     }
 
     let countSql = showAll
@@ -133,6 +136,9 @@ router.get('/:id', optionalAuth, async (req, res) => {
     if (typeof product.tags === 'string') {
       try { product.tags = JSON.parse(product.tags); } catch { product.tags = []; }
     }
+    if (typeof product.specifications === 'string') {
+      try { product.specifications = JSON.parse(product.specifications); } catch { product.specifications = []; }
+    }
 
     res.json({ product });
   } catch (err) {
@@ -144,7 +150,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
 router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const {
-      name, slug, description, price, compare_price, sku, brand, tags,
+      name, slug, description, price, compare_price, sku, brand, tags, specifications,
       category_id, is_featured, is_new_arrival, is_best_seller, images, variants
     } = req.body;
 
@@ -156,9 +162,9 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
     const productSlug = slug || name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
     await query(
-      `INSERT INTO products (id, name, slug, description, price, compare_price, sku, brand, tags, category_id, is_featured, is_new_arrival, is_best_seller)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, name, productSlug, description || null, price, compare_price || null, sku || null, brand || 'Surema', JSON.stringify(tags || []), category_id || null, is_featured || false, is_new_arrival || false, is_best_seller || false]
+      `INSERT INTO products (id, name, slug, description, price, compare_price, sku, brand, tags, specifications, category_id, is_featured, is_new_arrival, is_best_seller)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, name, productSlug, description || null, price, compare_price || null, sku || null, brand || 'Surema', JSON.stringify(tags || []), JSON.stringify(specifications || []), category_id || null, is_featured || false, is_new_arrival || false, is_best_seller || false]
     );
 
     if (images && images.length > 0) {
@@ -179,11 +185,34 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
       }
     }
 
-    const product = await getOne('SELECT * FROM products WHERE id = ?', [id]);
+    let product = await getOne('SELECT * FROM products WHERE id = ?', [id]);
+    if (product) {
+      if (typeof product.tags === 'string') {
+        try { product.tags = JSON.parse(product.tags); } catch { product.tags = []; }
+      }
+      if (typeof product.specifications === 'string') {
+        try { product.specifications = JSON.parse(product.specifications); } catch { product.specifications = []; }
+      }
+    }
     res.status(201).json({ product });
   } catch (err) {
     console.error('Create product error:', err);
     res.status(500).json({ error: 'Failed to create product' });
+  }
+});
+
+router.put('/bulk-description', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { description } = req.body;
+    if (typeof description !== 'string' || !description.trim()) {
+      return res.status(400).json({ error: 'Description is required' });
+    }
+
+    await query('UPDATE products SET description = ?', [description.trim()]);
+    res.json({ message: 'All product descriptions updated' });
+  } catch (err) {
+    console.error('Bulk description update error:', err);
+    res.status(500).json({ error: 'Failed to update product descriptions' });
   }
 });
 
@@ -195,12 +224,12 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
 
     const fields = [];
     const values = [];
-    const allowedFields = ['name', 'slug', 'description', 'price', 'compare_price', 'sku', 'brand', 'tags', 'category_id', 'is_featured', 'is_new_arrival', 'is_best_seller', 'is_active'];
+    const allowedFields = ['name', 'slug', 'description', 'price', 'compare_price', 'sku', 'brand', 'tags', 'specifications', 'category_id', 'is_featured', 'is_new_arrival', 'is_best_seller', 'is_active'];
 
     for (const [key, val] of Object.entries(productUpdates)) {
       if (allowedFields.includes(key)) {
         fields.push(`${key} = ?`);
-        values.push(key === 'tags' ? JSON.stringify(val) : val);
+        values.push(key === 'tags' || key === 'specifications' ? JSON.stringify(val) : val);
       }
     }
 
@@ -234,7 +263,15 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
 
-    const product = await getOne('SELECT * FROM products WHERE id = ?', [id]);
+    let product = await getOne('SELECT * FROM products WHERE id = ?', [id]);
+    if (product) {
+      if (typeof product.tags === 'string') {
+        try { product.tags = JSON.parse(product.tags); } catch { product.tags = []; }
+      }
+      if (typeof product.specifications === 'string') {
+        try { product.specifications = JSON.parse(product.specifications); } catch { product.specifications = []; }
+      }
+    }
     res.json({ product });
   } catch (err) {
     console.error('Update product error:', err);

@@ -9,6 +9,11 @@ export interface Category {
   created_at: string;
 }
 
+export interface ProductSpecification {
+  label: string;
+  value: string;
+}
+
 export interface Product {
   id: string;
   category_id: string | null;
@@ -20,6 +25,7 @@ export interface Product {
   sku: string | null;
   brand: string;
   tags: string[] | null;
+  specifications?: ProductSpecification[] | null;
   is_featured: boolean;
   is_new_arrival: boolean;
   is_best_seller: boolean;

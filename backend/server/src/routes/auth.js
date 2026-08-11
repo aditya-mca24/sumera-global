@@ -75,17 +75,18 @@ router.post('/forgot-password', async (req, res) => {
 
     const user = await getOne('SELECT id, email FROM users WHERE email = ?', [email.toLowerCase()]);
     if (!user) {
-      return res.status(404).json({ error: 'No account found with that email' });
+      return res.json({
+        message: 'If an account exists for this email, a reset link has been prepared.',
+      });
     }
 
     const token = crypto.randomBytes(32).toString('hex');
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    const expiresAt = new Date(Date.now() + 1000 * 60 * 30).toISOString().slice(0, 19).replace('T', ' ');
 
     await query('DELETE FROM password_reset_tokens WHERE user_id = ?', [user.id]);
     await query(
-      'INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, NOW())',
-      [uuidv4(), user.id, tokenHash, expiresAt]
+      'INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE), NOW())',
+      [uuidv4(), user.id, tokenHash]
     );
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';

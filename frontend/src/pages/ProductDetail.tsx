@@ -401,46 +401,19 @@ export default function ProductDetail() {
                   </div>
                   <div className="rounded-3xl border border-neutral-100 dark:border-primary-900/40 bg-neutral-50 dark:bg-[#120721] p-6 shadow-sm">
                     <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Product specifications</h3>
-                    <div className="space-y-3 text-sm text-neutral-700 dark:text-neutral-300">
-                      <div className="flex items-start gap-3">
-                        <span className="min-w-[110px] font-medium text-neutral-900 dark:text-neutral-200">Fabric</span>
-                        <span>{product.tags?.includes('Silk Blend') ? 'Silk Blend' : product.brand || 'N/A'}</span>
+                    {product.specifications && product.specifications.length > 0 ? (
+                      <div className="space-y-3 text-sm text-neutral-700 dark:text-neutral-300">
+                        {product.specifications.map((spec, index) => (
+                          <div key={index} className="flex items-start gap-3">
+                            <span className="min-w-[110px] font-medium text-neutral-900 dark:text-neutral-200">{spec.label}</span>
+                            <span>{spec.value}</span>
+                          </div>
+                        ))}
                       </div>
-                      <div className="flex items-start gap-3">
-                        <span className="min-w-[110px] font-medium text-neutral-900 dark:text-neutral-200">Fit</span>
-                        <span>Straight shape</span>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <span className="min-w-[110px] font-medium text-neutral-900 dark:text-neutral-200">Sleeves</span>
-                        <span>Three-quarter regular sleeves</span>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <span className="min-w-[110px] font-medium text-neutral-900 dark:text-neutral-200">Style</span>
-                        <span>Regular</span>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <span className="min-w-[110px] font-medium text-neutral-900 dark:text-neutral-200">Closure</span>
-                        <span>Slip-On</span>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <span className="min-w-[110px] font-medium text-neutral-900 dark:text-neutral-200">Detail</span>
-                        <span>Embroidered motifs</span>
-                      </div>
-                    </div>
+                    ) : (
+                      <p className="text-sm text-neutral-600 dark:text-neutral-400">No specifications available for this product.</p>
+                    )}
                   </div>
-                </div>
-
-                <div className="rounded-3xl border border-neutral-100 dark:border-primary-900/40 bg-white dark:bg-[#1c0f33] p-6">
-                  <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Kurta design</h3>
-                  <ul className="grid gap-3 text-sm text-neutral-600 dark:text-neutral-400 list-disc list-inside">
-                    <li>Ethnic motifs embroidered</li>
-                    <li>Straight shape</li>
-                    <li>Regular style</li>
-                    <li>Round neck, three-quarter regular sleeves</li>
-                    <li>1 pockets sequinned detail</li>
-                    <li>Calf length with straight hem</li>
-                    <li>Silk blend machine weave fabric</li>
-                  </ul>
                 </div>
               </div>
             )}

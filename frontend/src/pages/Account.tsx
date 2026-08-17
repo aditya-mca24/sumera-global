@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   User as UserIcon,
   Package,
@@ -43,7 +43,23 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function Account() {
   const { user, refreshProfile } = useAuth();
+  const location = useLocation();
   const [tab, setTab] = useState<Tab>('profile');
+  const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const paymentStatus = params.get('payment');
+
+    if (paymentStatus === 'success') {
+      setPaymentNotice('Payment successful. Your order has been placed successfully.');
+      setTab('orders');
+    } else if (paymentStatus === 'cancelled') {
+      setPaymentNotice('Payment was cancelled. You can try again or choose a different payment method.');
+    } else {
+      setPaymentNotice(null);
+    }
+  }, [location.search]);
 
   // Profile
   const [profileForm, setProfileForm] = useState({ full_name: '', phone: '', avatar_url: '' });
@@ -221,6 +237,12 @@ export default function Account() {
   return (
     <div className="min-h-screen pt-16 bg-neutral-50 dark:bg-[#1a0a2e]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        {paymentNotice && (
+          <div className="mb-6 rounded-xl border border-success-200 bg-success-50 text-success-700 dark:border-success-800 dark:bg-success-900/20 dark:text-success-300 px-4 py-3 text-sm font-medium">
+            {paymentNotice}
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-serif font-bold text-neutral-900 dark:text-white">My Account</h1>

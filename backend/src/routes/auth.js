@@ -30,10 +30,26 @@ router.post('/register', async (req, res) => {
       [id, email.toLowerCase(), passwordHash, full_name || null]
     );
 
-    const user = await getOne('SELECT id, email, full_name, phone, avatar_url, is_admin, role, created_at FROM users WHERE id = ?', [id]);
+    const user = await getOne('SELECT id, email, full_name, phone, avatar_url, is_admin, role, is_email_verified, created_at FROM users WHERE id = ?', [id]);
+    
+    // Send verification email
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(verificationToken).digest('hex');
+    
+    await query(
+      'INSERT INTO email_verification_tokens (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))',
+      [uuidv4(), id, tokenHash]
+    );
+    
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const verificationUrl = `${frontendUrl}/verify-email?token=${encodeURIComponent(verificationToken)}`;
+    
+    // TODO: Send verification email via nodemailer
+    console.log('Verification URL:', verificationUrl);
+    
     const token = generateToken(user);
 
-    res.status(201).json({ user, token });
+    res.status(201).json({ user, token, verificationRequired: true, verificationUrl });
   } catch (err) {
     console.error('Register error:', err);
     res.status(500).json({ error: 'Failed to create account' });
@@ -55,6 +71,14 @@ router.post('/login', async (req, res) => {
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
       return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    if (user.is_active === false) {
+      return res.status(403).json({ error: 'Your account is inactive. Please contact support.' });
+    }
+
+    if (user.is_email_verified === false) {
+      return res.status(403).json({ error: 'Please verify your email first.', verificationRequired: true });
     }
 
     const token = generateToken(user);
@@ -132,10 +156,76 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
+router.post('/verify-email', async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ error: 'Verification token is required' });
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const verificationRecord = await getOne(
+      'SELECT user_id FROM email_verification_tokens WHERE token_hash = ? AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1',
+      [tokenHash]
+    );
+
+    if (!verificationRecord) {
+      return res.status(400).json({ error: 'This verification link is invalid or has expired' });
+    }
+
+    await query('UPDATE users SET is_email_verified = TRUE WHERE id = ?', [verificationRecord.user_id]);
+    await query('DELETE FROM email_verification_tokens WHERE user_id = ?', [verificationRecord.user_id]);
+
+    const user = await getOne(
+      'SELECT id, email, full_name, phone, avatar_url, is_admin, role, is_email_verified, created_at FROM users WHERE id = ?',
+      [verificationRecord.user_id]
+    );
+    const verifyToken = generateToken(user);
+
+    res.json({ message: 'Email verified successfully', user, token: verifyToken });
+  } catch (err) {
+    console.error('Verify email error:', err);
+    res.status(500).json({ error: 'Failed to verify email' });
+  }
+});
+
+router.post('/resend-verification', authMiddleware, async (req, res) => {
+  try {
+    const user = await getOne('SELECT id, email, is_email_verified FROM users WHERE id = ?', [req.user.id]);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.is_email_verified) {
+      return res.json({ message: 'Email is already verified' });
+    }
+
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(verificationToken).digest('hex');
+
+    await query('DELETE FROM email_verification_tokens WHERE user_id = ?', [user.id]);
+    await query(
+      'INSERT INTO email_verification_tokens (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))',
+      [uuidv4(), user.id, tokenHash]
+    );
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const verificationUrl = `${frontendUrl}/verify-email?token=${encodeURIComponent(verificationToken)}`;
+
+    // TODO: Send verification email via nodemailer
+    console.log('Verification URL:', verificationUrl);
+
+    res.json({ message: 'Verification email sent', verificationUrl });
+  } catch (err) {
+    console.error('Resend verification error:', err);
+    res.status(500).json({ error: 'Failed to resend verification email' });
+  }
+});
+
 router.get('/me', authMiddleware, async (req, res) => {
   try {
     const user = await getOne(
-      'SELECT id, email, full_name, phone, avatar_url, is_admin, role, created_at FROM users WHERE id = ?',
+      'SELECT id, email, full_name, phone, avatar_url, is_admin, role, is_email_verified, created_at FROM users WHERE id = ?',
       [req.user.id]
     );
     if (!user) {

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
-import { apiFetch, getToken, setToken, clearToken } from '../lib/api';
+import { apiFetch, getToken, setToken as saveToken, clearToken } from '../lib/api';
 import { Profile } from '../types';
 
 interface User {
@@ -9,6 +9,7 @@ interface User {
   phone: string | null;
   avatar_url: string | null;
   is_admin: boolean;
+  is_email_verified?: boolean;
   role: 'user' | 'admin' | 'super_admin';
   created_at: string;
 }
@@ -34,6 +35,8 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  setUser: (user: User | null) => void;
+  setToken: (token: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -125,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: { email, password },
       });
 
-      setToken(response.token);
+      saveToken(response.token);
       const userData = mapApiUserToUser(response.user);
       setUser(userData);
       setProfile(mapUserToProfile(userData, response.user));
@@ -142,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: { email, password, full_name: fullName },
       });
 
-      setToken(response.token);
+      saveToken(response.token);
       const userData = mapApiUserToUser(response.user);
       setUser(userData);
       setProfile(mapUserToProfile(userData, response.user));
@@ -165,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, signUp, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, signIn, signUp, signOut, refreshProfile, setUser, setToken: saveToken }}>
       {children}
     </AuthContext.Provider>
   );

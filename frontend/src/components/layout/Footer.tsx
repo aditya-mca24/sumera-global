@@ -71,7 +71,7 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-semibold mb-4">Categories</h4>
             <ul className="space-y-2.5">
-              {['Western Tops', 'Crop Tops', 'Co-ord Sets', 'T-Shirts', 'Jeans', 'Kurtis', 'Dresses'].map(cat => (
+              {['Western Tops', 'Crop Tops', 'Cord Sets', 'T-Shirts', 'Jeans', 'Kurtis', 'Dresses'].map(cat => (
                 <li key={cat}>
                   <Link
                     to={`/shop?category=${cat.toLowerCase().replace(/\s+/g, '-')}`}
@@ -94,11 +94,11 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-2.5 text-sm text-neutral-400">
                 <Phone size={14} className="flex-shrink-0 text-primary-400" />
-                +91 9598603602
+                +91 9598603602 , +91 7897264494
               </li>
               <li className="flex items-center gap-2.5 text-sm text-neutral-400">
                 <Mail size={14} className="flex-shrink-0 text-primary-400" />
-                hello@surema.in
+                suremafashion@gmail.com
               </li>
             </ul>
             <form onSubmit={handleSubscribe} className="flex gap-2">

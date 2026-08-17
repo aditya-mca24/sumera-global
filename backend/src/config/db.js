@@ -14,6 +14,7 @@ async function initDatabase() {
         phone VARCHAR(50),
         avatar_url TEXT,
         is_admin BOOLEAN DEFAULT FALSE,
+        is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_email (email)
@@ -36,12 +37,30 @@ async function initDatabase() {
     if (!userColNames.includes('is_admin')) {
       await connection.execute('ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE');
     }
+    if (!userColNames.includes('is_active')) {
+      await connection.execute('ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE');
+    }
     if (!userColNames.includes('role')) {
       await connection.execute("ALTER TABLE users ADD COLUMN role VARCHAR(50) DEFAULT 'user'");
     }
     if (!userColNames.includes('updated_at')) {
       await connection.execute('ALTER TABLE users ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
     }
+    if (!userColNames.includes('is_email_verified')) {
+      await connection.execute('ALTER TABLE users ADD COLUMN is_email_verified BOOLEAN DEFAULT FALSE');
+    }
+
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS email_verification_tokens (
+        id CHAR(36) PRIMARY KEY,
+        user_id CHAR(36) NOT NULL,
+        token_hash VARCHAR(64) NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_user_token (user_id, token_hash)
+      )
+    `);
 
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS password_reset_tokens (

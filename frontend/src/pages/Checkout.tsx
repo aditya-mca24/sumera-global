@@ -22,6 +22,16 @@ interface LocationState {
   discount?: number;
 }
 
+type PaymentMethod = 'cod' | 'debit_card' | 'credit_card' | 'upi' | 'net_banking';
+
+const PAYMENT_METHODS: Array<{ value: PaymentMethod; label: string; description: string; icon: typeof Wallet }> = [
+  { value: 'cod', label: 'COD', description: 'Pay on delivery', icon: Truck },
+  { value: 'debit_card', label: 'Debit Card', description: 'Debit card payment', icon: CreditCard },
+  { value: 'credit_card', label: 'Credit Card', description: 'Credit card payment', icon: CreditCard },
+  { value: 'upi', label: 'UPI', description: 'Pay via UPI', icon: Wallet },
+  { value: 'net_banking', label: 'Net Banking', description: 'Bank transfer', icon: Wallet },
+];
+
 const EMPTY_ADDRESS: AddressData = {
   full_name: '',
   phone: '',
@@ -50,10 +60,19 @@ export default function Checkout() {
   const [form, setForm] = useState<AddressData>(EMPTY_ADDRESS);
   const [savingAddress, setSavingAddress] = useState(false);
 
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
   const [notes, setNotes] = useState('');
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState('');
+  const [razorpayOrderData, setRazorpayOrderData] = useState<{
+    orderId: string;
+    razorpayOrderId: string;
+    razorpayKeyId: string;
+    amount: number;
+    currency: string;
+    userEmail: string;
+    userName: string;
+  } | null>(null);
 
   const SHIPPING = total >= 999 || total === 0 ? 0 : 79;
   const grandTotal = Math.max(0, total - discount + SHIPPING);
@@ -80,6 +99,17 @@ export default function Checkout() {
     }
     fetchAddresses();
   }, [user]);
+
+  // Load Razorpay script
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
 
   // Redirect to cart if empty (but allow order placement flow to finish)
   useEffect(() => {
@@ -152,40 +182,118 @@ export default function Checkout() {
       country: addr.country,
     };
 
+    const orderPayload = {
+      items: items.map((i) => ({
+        product_id: i.product_id,
+        product_name: i.product?.name ?? '',
+        product_image: i.product?.images?.[0]?.url ?? null,
+        variant_size: i.variant?.size ?? null,
+        variant_color: i.variant?.color ?? null,
+        quantity: i.quantity,
+        unit_price: i.product?.price ?? 0,
+        total_price: (i.product?.price ?? 0) * i.quantity,
+      })),
+      shipping_address: addressData,
+      payment_method: paymentMethod,
+      coupon_code: couponCode,
+      notes,
+      subtotal: total,
+      discount,
+      shipping: SHIPPING,
+      total: grandTotal,
+    };
+
     setPlacing(true);
     try {
-      await apiFetch(`/orders`, {
+      if (paymentMethod === 'cod') {
+        await apiFetch(`/orders`, {
+          method: 'POST',
+          body: orderPayload,
+        });
+
+        await clearCart();
+        navigate('/account');
+        return;
+      }
+
+      // For online payments, create Razorpay order
+      const result = await apiFetch<{
+        orderId: string;
+        razorpayOrderId: string;
+        razorpayKeyId: string;
+        amount: number;
+        currency: string;
+        userEmail: string;
+        userName: string;
+      }>(`/payments/checkout`, {
         method: 'POST',
-        body: {
-          items: items.map((i) => ({
-            product_id: i.product_id,
-            product_name: i.product?.name ?? '',
-            product_image: i.product?.images?.[0]?.url ?? null,
-            variant_size: i.variant?.size ?? null,
-            variant_color: i.variant?.color ?? null,
-            quantity: i.quantity,
-            unit_price: i.product?.price ?? 0,
-            total_price: (i.product?.price ?? 0) * i.quantity,
-          })),
-          shipping_address: addressData,
-          payment_method: paymentMethod,
-          coupon_code: couponCode,
-          notes,
-          subtotal: total,
-          discount,
-          shipping: SHIPPING,
-          total: grandTotal,
-        },
+        body: orderPayload,
       });
 
-      await clearCart();
-      navigate('/account');
+      setRazorpayOrderData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to place order');
-    } finally {
       setPlacing(false);
     }
   }
+
+  function handleRazorpayPayment() {
+    if (!razorpayOrderData) return;
+
+    const options = {
+      key: razorpayOrderData.razorpayKeyId,
+      order_id: razorpayOrderData.razorpayOrderId,
+      amount: razorpayOrderData.amount,
+      currency: razorpayOrderData.currency,
+      name: 'Surema Fashion',
+      description: 'Complete your purchase',
+      customer_notification: 1,
+      prefill: {
+        email: razorpayOrderData.userEmail,
+        contact: '',
+      },
+      handler: async (response: {
+        razorpay_payment_id: string;
+        razorpay_order_id: string;
+        razorpay_signature: string;
+      }) => {
+        try {
+          // Verify payment on backend
+          await apiFetch(`/payments/verify`, {
+            method: 'POST',
+            body: {
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              orderId: razorpayOrderData.orderId,
+            },
+          });
+
+          await clearCart();
+          setRazorpayOrderData(null);
+          navigate('/account?payment=success');
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Payment verification failed');
+          setRazorpayOrderData(null);
+        }
+      },
+      modal: {
+        ondismiss: () => {
+          setRazorpayOrderData(null);
+          setPlacing(false);
+        },
+      },
+    };
+
+    const razorpay = new (window as any).Razorpay(options);
+    razorpay.open();
+  }
+
+  useEffect(() => {
+    if (razorpayOrderData && !placing) {
+      handleRazorpayPayment();
+    }
+  }, [razorpayOrderData, placing]);
 
   if (loadingAddresses) {
     return (
@@ -389,48 +497,30 @@ export default function Checkout() {
                 <h2 className="text-lg font-serif font-bold text-neutral-900 dark:text-white">Payment Method</h2>
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
-                <label
-                  className={`flex items-center gap-3 border rounded-xl p-4 cursor-pointer transition-all ${
-                    paymentMethod === 'cod'
-                      ? 'border-primary-600 bg-primary-50/50 dark:bg-primary-900/20'
-                      : 'border-neutral-200 dark:border-primary-800/40 hover:border-neutral-300 dark:hover:border-primary-800/40'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="cod"
-                    checked={paymentMethod === 'cod'}
-                    onChange={() => setPaymentMethod('cod')}
-                    className="accent-primary-600"
-                  />
-                  <Truck size={20} className="text-neutral-500 dark:text-neutral-400" />
-                  <div>
-                    <p className="font-medium text-neutral-900 dark:text-white">Cash on Delivery</p>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400">Pay when you receive</p>
-                  </div>
-                </label>
-                <label
-                  className={`flex items-center gap-3 border rounded-xl p-4 cursor-pointer transition-all ${
-                    paymentMethod === 'online'
-                      ? 'border-primary-600 bg-primary-50/50 dark:bg-primary-900/20'
-                      : 'border-neutral-200 dark:border-primary-800/40 hover:border-neutral-300 dark:hover:border-primary-800/40'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="online"
-                    checked={paymentMethod === 'online'}
-                    onChange={() => setPaymentMethod('online')}
-                    className="accent-primary-600"
-                  />
-                  <Wallet size={20} className="text-neutral-500 dark:text-neutral-400" />
-                  <div>
-                    <p className="font-medium text-neutral-900 dark:text-white">Online Payment</p>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400">UPI / Card / Net Banking</p>
-                  </div>
-                </label>
+                {PAYMENT_METHODS.map(({ value, label, description, icon: Icon }) => (
+                  <label
+                    key={value}
+                    className={`flex items-center gap-3 border rounded-xl p-4 cursor-pointer transition-all ${
+                      paymentMethod === value
+                        ? 'border-primary-600 bg-primary-50/50 dark:bg-primary-900/20'
+                        : 'border-neutral-200 dark:border-primary-800/40 hover:border-neutral-300 dark:hover:border-primary-800/40'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment"
+                      value={value}
+                      checked={paymentMethod === value}
+                      onChange={() => setPaymentMethod(value)}
+                      className="accent-primary-600"
+                    />
+                    <Icon size={20} className="text-neutral-500 dark:text-neutral-400" />
+                    <div>
+                      <p className="font-medium text-neutral-900 dark:text-white">{label}</p>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">{description}</p>
+                    </div>
+                  </label>
+                ))}
               </div>
             </section>
 

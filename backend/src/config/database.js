@@ -69,3 +69,19 @@ export async function getOne(sql, params = []) {
 }
 
 export default pool;
+
+// Test DB connection at startup to provide clearer diagnostics for misconfiguration
+async function testConnection() {
+  try {
+    const conn = await pool.getConnection();
+    await conn.execute('SELECT 1');
+    conn.release();
+    console.log('Database connection: OK');
+  } catch (err) {
+    console.error('Database connection failed. Config (without password):', { host, port, user, database });
+    console.error('Tip: create a `.env` in the `backend` folder with MYSQLUSER, MYSQLPASSWORD, MYSQLHOST, MYSQLDATABASE, or set `DATABASE_URL`.');
+    throw err;
+  }
+}
+
+await testConnection();

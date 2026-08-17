@@ -47,9 +47,9 @@ export default function Header() {
     <>
       <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${headerBg}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-19 lg:h-18">
+          <div className="flex items-center justify-between h-16 lg:h-18">
             <Link to="/" className="flex items-center gap-3 font-serif font-bold tracking-wide transition-colors text-white">
-              <img src="/images/f_logo-removebg-preview.png" alt="Surema logo" className="h-20 w-auto rounded-md" />
+              <img src="/images/f_logo-removebg-preview.png" alt="Surema logo" className="h-16 w-auto rounded-md" />
               {/* <span className="hidden xl:inline-block text-lg sm:text-xl">SUREMA</span> */}
             </Link>
 
@@ -77,7 +77,7 @@ export default function Header() {
                         {CATEGORIES.map(cat => (
                           <Link
                             key={cat}
-                            to={`/shop?category=${cat.toLowerCase().replace(/\s+/g, '-').replace(/['-]/g, '').replace('--', '-')}`}
+                            to={`/shop?category=${cat.toLowerCase().replace(/\s+/g, '-')}`}
                             className="block px-4 py-2 text-sm text-neutral-100 hover:bg-[#351e5c] hover:text-white transition-colors"
                           >
                             {cat}

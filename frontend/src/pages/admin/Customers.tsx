@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users, Search, Shield, ShieldCheck, Crown, ChevronLeft, ChevronRight, AlertCircle, X } from 'lucide-react';
+import { Users, Search, Shield, ShieldCheck, Crown, ChevronLeft, ChevronRight, AlertCircle, X, Eye, Settings, PowerOff } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -9,8 +9,13 @@ interface CustomerRow {
   phone: string | null;
   avatar_url: string | null;
   is_admin: boolean;
+  is_active: boolean;
   role: 'user' | 'admin' | 'super_admin';
   created_at: string;
+}
+
+interface CustomerProfile extends CustomerRow {
+  email: string | null;
 }
 
 const PAGE_SIZE = 20;
@@ -34,6 +39,8 @@ export default function AdminCustomers() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ customer: CustomerRow; newRole: 'user' | 'admin' | 'super_admin' } | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
+  const [profileModal, setProfileModal] = useState<CustomerProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
@@ -78,15 +85,50 @@ export default function AdminCustomers() {
 
     setUpdatingId(customer.id);
     try {
-      // map role to is_admin flag
-      const is_admin = newRole !== 'user';
-      await apiFetch(`/profiles/${customer.id}`, { method: 'PUT', body: { is_admin } });
-      setCustomers((prev) => prev.map((c) => (c.id === customer.id ? { ...c, role: is_admin ? (newRole === 'super_admin' ? 'super_admin' : 'admin') : 'user', is_admin } : c)));
+      const res = await apiFetch<{ user: CustomerRow }>(`/profiles/${customer.id}/role`, {
+        method: 'PUT',
+        body: { role: newRole },
+      });
+      setCustomers((prev) => prev.map((c) => (c.id === customer.id ? { ...c, role: res.user.role } : c)));
       setConfirmModal(null);
     } catch (err) {
       setModalError(err instanceof Error ? err.message : String(err));
     }
     setUpdatingId(null);
+  }
+
+  async function handleStatusToggle(customer: CustomerRow) {
+    if (customer.id === profile?.id && customer.is_active) {
+      setError('You cannot deactivate your own account while signed in.');
+      return;
+    }
+
+    setUpdatingId(customer.id);
+    try {
+      const nextActive = !customer.is_active;
+      const res = await apiFetch<{ user: CustomerRow }>(`/profiles/${customer.id}`, {
+        method: 'PUT',
+        body: { is_active: nextActive },
+      });
+
+      setCustomers((prev) => prev.map((c) => (c.id === customer.id ? { ...c, is_active: res.user.is_active ?? nextActive } : c)));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+    setUpdatingId(null);
+  }
+
+  async function openProfile(customer: CustomerRow) {
+    setProfileLoading(true);
+    try {
+      const res = await apiFetch<{ user: CustomerProfile }>(`/profiles/${customer.id}`);
+      setProfileModal(res.user);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setProfileLoading(false);
+    }
   }
 
   return (
@@ -133,8 +175,9 @@ export default function AdminCustomers() {
                 <th className="px-4 py-3 font-medium">Customer</th>
                 <th className="px-4 py-3 font-medium">Phone</th>
                 <th className="px-4 py-3 font-medium">Role</th>
+                <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Joined</th>
-                {isSuperAdmin && <th className="px-4 py-3 font-medium text-right">Actions</th>}
+                <th className="px-4 py-3 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -168,23 +211,50 @@ export default function AdminCustomers() {
                           <RoleIcon size={12} /> {roleLabel}
                         </span>
                       </td>
+                      <td className="px-4 py-3">
+                        <span className={`badge ${c.is_active ? 'bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-400' : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300'} w-fit`}>
+                          {c.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">
                         {new Date(c.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
-                      {isSuperAdmin && (
-                        <td className="px-4 py-3 text-right">
-                          {updatingId === c.id ? (
-                            <span className="text-xs text-neutral-400">Saving...</span>
-                          ) : (
+                      <td className="px-4 py-3 text-right">
+                        {updatingId === c.id ? (
+                          <span className="text-xs text-neutral-400">Saving...</span>
+                        ) : (
+                          <div className="flex items-center justify-end gap-1">
                             <button
-                              onClick={() => setConfirmModal({ customer: c, newRole: c.role })}
-                              className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium"
+                              onClick={() => openProfile(c)}
+                              disabled={profileLoading}
+                              className="p-1.5 text-neutral-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                              title="View Profile"
                             >
-                              Change Role
+                              <Eye size={16} />
                             </button>
-                          )}
-                        </td>
-                      )}
+                            {isSuperAdmin && (
+                              <>
+                                <button
+                                  onClick={() => setConfirmModal({ customer: c, newRole: c.role })}
+                                  className="p-1.5 text-neutral-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                                  title="Change Role"
+                                >
+                                  <Settings size={16} />
+                                </button>
+                                {c.role !== 'super_admin' && (
+                                  <button
+                                    onClick={() => handleStatusToggle(c)}
+                                    className={`p-1.5 transition-colors ${c.is_active ? 'text-neutral-400 hover:text-warning-600 dark:hover:text-warning-400' : 'text-neutral-400 hover:text-success-600 dark:hover:text-success-400'}`}
+                                    title={c.is_active ? 'Deactivate' : 'Activate'}
+                                  >
+                                    <PowerOff size={16} />
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </td>
                     </tr>
                   );
                 })
@@ -222,6 +292,54 @@ export default function AdminCustomers() {
         <p className="mt-4 text-sm text-neutral-400 dark:text-neutral-500 flex items-center gap-1.5">
           <Shield size={14} /> Only super admins can change user roles.
         </p>
+      )}
+
+      {profileModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-lg bg-white dark:bg-[#2e1547] rounded-2xl shadow-2xl p-6">
+            <div className="flex items-start justify-between mb-5">
+              <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">User Profile</h3>
+              <button onClick={() => setProfileModal(null)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-4 mb-5">
+              {profileModal.avatar_url ? (
+                <img src={profileModal.avatar_url} alt="" className="w-16 h-16 rounded-full object-cover border border-neutral-200 dark:border-primary-700" />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-800/40 flex items-center justify-center text-primary-600 dark:text-primary-300 font-semibold text-lg">
+                  {(profileModal.full_name ?? '?')[0]?.toUpperCase()}
+                </div>
+              )}
+              <div>
+                <p className="text-xl font-semibold text-neutral-900 dark:text-white">{profileModal.full_name ?? 'Unknown'}</p>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">{profileModal.email ?? 'No email provided'}</p>
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="rounded-xl bg-neutral-50 dark:bg-[#3a1d5c] p-3">
+                <p className="text-xs uppercase tracking-wide text-neutral-400 mb-1">Role</p>
+                <p className="font-medium text-neutral-900 dark:text-white">{ROLE_CONFIG[profileModal.role]?.label ?? 'User'}</p>
+              </div>
+              <div className="rounded-xl bg-neutral-50 dark:bg-[#3a1d5c] p-3">
+                <p className="text-xs uppercase tracking-wide text-neutral-400 mb-1">Status</p>
+                <p className="font-medium text-neutral-900 dark:text-white">{profileModal.is_active ? 'Active' : 'Inactive'}</p>
+              </div>
+              <div className="rounded-xl bg-neutral-50 dark:bg-[#3a1d5c] p-3">
+                <p className="text-xs uppercase tracking-wide text-neutral-400 mb-1">Phone</p>
+                <p className="font-medium text-neutral-900 dark:text-white">{profileModal.phone ?? 'Not provided'}</p>
+              </div>
+              <div className="rounded-xl bg-neutral-50 dark:bg-[#3a1d5c] p-3">
+                <p className="text-xs uppercase tracking-wide text-neutral-400 mb-1">Joined</p>
+                <p className="font-medium text-neutral-900 dark:text-white">
+                  {new Date(profileModal.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {confirmModal && (

@@ -7,7 +7,7 @@ const router = Router();
 router.get('/', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const users = await query(
-      'SELECT id, email, full_name, phone, avatar_url, is_admin, role, created_at FROM users ORDER BY created_at DESC'
+      'SELECT id, email, full_name, phone, avatar_url, is_admin, is_active, role, created_at FROM users ORDER BY created_at DESC'
     );
     res.json({ users });
   } catch (err) {
@@ -19,7 +19,7 @@ router.get('/', authMiddleware, adminMiddleware, async (req, res) => {
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const user = await getOne(
-      'SELECT id, email, full_name, phone, avatar_url, is_admin, role, created_at FROM users WHERE id = ?',
+      'SELECT id, email, full_name, phone, avatar_url, is_admin, is_active, role, created_at FROM users WHERE id = ?',
       [req.params.id]
     );
     if (!user) {
@@ -38,12 +38,21 @@ router.get('/:id', authMiddleware, async (req, res) => {
 router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { is_admin } = req.body;
+    const { is_admin, is_active } = req.body;
 
-    await query('UPDATE users SET is_admin = ? WHERE id = ?', [is_admin ?? false, id]);
+    const currentUser = await getOne('SELECT is_admin, is_active FROM users WHERE id = ?', [id]);
+    if (!currentUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    await query('UPDATE users SET is_admin = ?, is_active = ? WHERE id = ?', [
+      typeof is_admin === 'boolean' ? is_admin : currentUser.is_admin,
+      typeof is_active === 'boolean' ? is_active : currentUser.is_active,
+      id,
+    ]);
 
     const user = await getOne(
-      'SELECT id, email, full_name, phone, avatar_url, is_admin, role, created_at FROM users WHERE id = ?',
+      'SELECT id, email, full_name, phone, avatar_url, is_admin, is_active, role, created_at FROM users WHERE id = ?',
       [id]
     );
     res.json({ user });

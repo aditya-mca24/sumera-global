@@ -48,8 +48,7 @@ export default function Shop() {
   }, []);
 
   useEffect(() => {
-   
-    const targetScroll = scrollRestore.current;
+    const targetScroll = scrollRestore.current ?? 0;
     scrollRestore.current = null;
 
     window.requestAnimationFrame(() => {

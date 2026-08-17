@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import ScrollToTop from './lib/ScrollToTop';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -6,6 +7,7 @@ import { WishlistProvider } from './context/WishlistContext';
 import { ThemeProvider } from './context/ThemeContext';
 import Layout from './components/layout/Layout';
 import AdminLayout from './components/admin/AdminLayout';
+import { AnimatedPage } from './components/motion';
 import Home from './pages/Home';
 import Shop from './pages/Shop';
 import ProductDetail from './pages/ProductDetail';
@@ -19,6 +21,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminProducts from './pages/admin/Products';
 import AdminCategories from './pages/admin/Categories';
@@ -46,38 +49,43 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
+  const location = useLocation();
+  
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/shop" element={<Shop />} />
-        <Route path="/product/:slug" element={<ProductDetail />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/wishlist" element={<Wishlist />} />
-        <Route path="/bulk-order" element={<BulkOrder />} />
-        <Route path="/booking" element={<Navigate to="/bulk-order" replace />} />
-        <Route path="/manufacturer-wholesaler" element={<ManufacturerWholesaler />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
-        <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
-      </Route>
-      <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
-        <Route index element={<AdminDashboard />} />
-        <Route path="products" element={<AdminProducts />} />
-        <Route path="categories" element={<AdminCategories />} />
-        <Route path="orders" element={<AdminOrders />} />
-        <Route path="coupons" element={<AdminCoupons />} />
-        <Route path="banners" element={<AdminBanners />} />
-        <Route path="bulk-orders" element={<AdminBulkOrders />} />
-        <Route path="reviews" element={<AdminReviews />} />
-        <Route path="reports" element={<AdminReports />} />
-        <Route path="customers" element={<AdminCustomers />} />
-        <Route path="super-admin" element={<SuperAdmin />} />
-      </Route>
-    </Routes>
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route element={<Layout />}>
+          <Route path="/" element={<AnimatedPage><Home /></AnimatedPage>} />
+          <Route path="/shop" element={<AnimatedPage><Shop /></AnimatedPage>} />
+          <Route path="/product/:slug" element={<AnimatedPage><ProductDetail /></AnimatedPage>} />
+          <Route path="/cart" element={<AnimatedPage><Cart /></AnimatedPage>} />
+          <Route path="/wishlist" element={<AnimatedPage><Wishlist /></AnimatedPage>} />
+          <Route path="/bulk-order" element={<AnimatedPage><BulkOrder /></AnimatedPage>} />
+          <Route path="/booking" element={<Navigate to="/bulk-order" replace />} />
+          <Route path="/manufacturer-wholesaler" element={<AnimatedPage><ManufacturerWholesaler /></AnimatedPage>} />
+          <Route path="/login" element={<AnimatedPage><Login /></AnimatedPage>} />
+          <Route path="/register" element={<AnimatedPage><Register /></AnimatedPage>} />
+          <Route path="/verify-email" element={<AnimatedPage><VerifyEmail /></AnimatedPage>} />
+          <Route path="/forgot-password" element={<AnimatedPage><ForgotPassword /></AnimatedPage>} />
+          <Route path="/reset-password" element={<AnimatedPage><ResetPassword /></AnimatedPage>} />
+          <Route path="/checkout" element={<ProtectedRoute><AnimatedPage><Checkout /></AnimatedPage></ProtectedRoute>} />
+          <Route path="/account" element={<ProtectedRoute><AnimatedPage><Account /></AnimatedPage></ProtectedRoute>} />
+        </Route>
+        <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+          <Route index element={<AnimatedPage><AdminDashboard /></AnimatedPage>} />
+          <Route path="products" element={<AnimatedPage><AdminProducts /></AnimatedPage>} />
+          <Route path="categories" element={<AnimatedPage><AdminCategories /></AnimatedPage>} />
+          <Route path="orders" element={<AnimatedPage><AdminOrders /></AnimatedPage>} />
+          <Route path="coupons" element={<AnimatedPage><AdminCoupons /></AnimatedPage>} />
+          <Route path="banners" element={<AnimatedPage><AdminBanners /></AnimatedPage>} />
+          <Route path="bulk-orders" element={<AnimatedPage><AdminBulkOrders /></AnimatedPage>} />
+          <Route path="reviews" element={<AnimatedPage><AdminReviews /></AnimatedPage>} />
+          <Route path="reports" element={<AnimatedPage><AdminReports /></AnimatedPage>} />
+          <Route path="customers" element={<AnimatedPage><AdminCustomers /></AnimatedPage>} />
+          <Route path="super-admin" element={<AnimatedPage><SuperAdmin /></AnimatedPage>} />
+        </Route>
+      </Routes>
+    </AnimatePresence>
   );
 }
 

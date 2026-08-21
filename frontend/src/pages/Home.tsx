@@ -175,7 +175,7 @@ export default function Home() {
       </section>
 
       {/* Trust Badges */}
-      <section className="bg-gradient-to-r from-primary-50 via-white to-accent-50 dark:from-[#241038] dark:via-[#241038] dark:to-[#241038] border-y border-primary-100 dark:border-primary-900/40">
+      <section className="bg-gradient-to-r from-primary-50 via-[#fffaf8] to-accent-50 dark:from-[#3b1a28] dark:via-[#4a1d2d] dark:to-[#3b1a28] border-y border-primary-100 dark:border-primary-700/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {[
@@ -221,7 +221,7 @@ export default function Home() {
       )}
 
       {/* Categories */}
-      <section className="py-16 bg-gradient-to-b from-primary-50/50 to-white dark:from-[#241038] dark:to-[#1a0a2e]">
+      <section className="py-16 bg-gradient-to-b from-primary-50/50 to-white dark:from-[#4a1d2d] dark:to-[#2d1018]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between mb-8">
             <div>
@@ -315,7 +315,7 @@ export default function Home() {
 
       {/* New Arrivals */}
       {(newArrivals.length > 0 || loading) && (
-        <section className="py-16 bg-gradient-to-b from-primary-50/50 to-white dark:from-[#241038] dark:to-[#1a0a2e]">
+        <section className="py-16 bg-gradient-to-b from-primary-50/50 to-white dark:from-[#4a1d2d] dark:to-[#2d1018]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-end justify-between mb-8">
               <div>
@@ -336,7 +336,7 @@ export default function Home() {
       )}
 
       {/* Testimonials */}
-      <section className="py-16 bg-gradient-to-b from-white to-primary-50/30 dark:from-[#1a0a2e] dark:to-[#241038]">
+      <section className="py-16 bg-gradient-to-b from-white to-primary-50/30 dark:from-[#2d1018] dark:to-[#4a1d2d]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <p className="text-primary-600 dark:text-primary-400 text-sm font-medium tracking-wider uppercase mb-2">Reviews</p>
@@ -363,7 +363,7 @@ export default function Home() {
 
       {/* Latest Products */}
       {(latestProducts.length > 0 || loading) && (
-        <section className="py-16 bg-gradient-to-b from-primary-50/50 to-white dark:from-[#241038] dark:to-[#1a0a2e]">
+        <section className="py-16 bg-gradient-to-b from-primary-50/50 to-white dark:from-[#4a1d2d] dark:to-[#2d1018]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-end justify-between mb-8">
               <div>
@@ -452,11 +452,11 @@ export default function Home() {
 
 function ProductCardSkeleton() {
   return (
-    <div className="rounded-2xl overflow-hidden bg-neutral-100 dark:bg-[#2e1547] animate-pulse">
-      <div className="aspect-[3/4] bg-neutral-200 dark:bg-[#3a1d5c]" />
+    <div className="rounded-2xl overflow-hidden bg-neutral-100 dark:bg-[#5a2438] animate-pulse">
+      <div className="aspect-[3/4] bg-neutral-200 dark:bg-[#7a3146]" />
       <div className="p-4">
-        <div className="h-4 bg-neutral-200 dark:bg-[#3a1d5c] rounded w-3/4 mb-2" />
-        <div className="h-3 bg-neutral-200 dark:bg-[#3a1d5c] rounded w-1/2" />
+        <div className="h-4 bg-neutral-200 dark:bg-[#7a3146] rounded w-3/4 mb-2" />
+        <div className="h-3 bg-neutral-200 dark:bg-[#7a3146] rounded w-1/2" />
       </div>
     </div>
   );

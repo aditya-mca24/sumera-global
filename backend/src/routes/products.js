@@ -59,8 +59,14 @@ router.get('/', optionalAuth, async (req, res) => {
       popular: 'p.review_count DESC',
     };
     sql += ` ORDER BY ${sortMap[sort] || 'p.created_at DESC'}`;
-    sql += ' LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), offset);
+
+    // NOTE: LIMIT/OFFSET are injected directly instead of as placeholders
+    // because some mysql2 versions throw "Incorrect arguments to
+    // mysqld_stmt_execute" when LIMIT/OFFSET are bound via '?'.
+    // This is safe here because both values are forced through parseInt().
+    const limitNum = parseInt(limit) || 12;
+    const offsetNum = offset || 0;
+    sql += ` LIMIT ${limitNum} OFFSET ${offsetNum}`;
 
     const products = await query(sql, params);
 
@@ -88,7 +94,8 @@ router.get('/', optionalAuth, async (req, res) => {
     if (filters.length > 0) {
       countSql += ' AND ' + filters.join(' AND ');
     }
-    const countParams = params.slice(0, -2);
+    // params no longer contains LIMIT/OFFSET values, so use it as-is
+    const countParams = params;
     const [{ total }] = await query(countSql, countParams);
 
     res.json({ products, total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / parseInt(limit)) });
